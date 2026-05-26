@@ -6,7 +6,20 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || 'lifxai_default_secret';
+
+// ============ CONFIGURATION ============
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'lifxai_default_secret_change_this';
+
+// FALLBACK MANUAL (GUNAKAN INI KALAU ENV DI VERCEL TIDAK TERBACA)
+const CLIENT_ID_FALLBACK = '1495417904085205152';
+const CLIENT_SECRET_FALLBACK = 'GWLHyZ_cHdI2lXOzBrz7qiBMqpPkUDMJ3jHJqLVoEMM3o';
+
+// Ambil dari env, kalau undefined pake fallback
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || CLIENT_ID_FALLBACK;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || CLIENT_SECRET_FALLBACK;
+const REDIRECT_URI = process.env.REDIRECT_URI || 'https://bot-woad-six.vercel.app/auth/discord/callback';
+const OWNER_IDS = process.env.OWNER_IDS ? process.env.OWNER_IDS.split(',') : [];
 
 // ============ MIDDLEWARE ============
 app.use(express.json());
@@ -14,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static('public'));
 
-// Middleware autentikasi JWT
+// Middleware autentikasi
 function authenticateToken(req, res, next) {
     const token = req.cookies.token;
     if (!token) {
@@ -22,29 +35,21 @@ function authenticateToken(req, res, next) {
         return next();
     }
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
+        req.user = jwt.verify(token, JWT_SECRET);
     } catch (error) {
         req.user = null;
     }
     next();
 }
 
-// ============ DISCORD OAUTH2 CONFIG ============
-const DISCORD_API = 'https://discord.com/api/v10';
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
-const OWNER_IDS = process.env.OWNER_IDS ? process.env.OWNER_IDS.split(',') : [];
-
-// ============ ROUTES WEB ============
+// ============ ROUTES ============
 
 // Home page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Dashboard page (harus login)
+// Dashboard (harus login)
 app.get('/dashboard', authenticateToken, (req, res) => {
     if (!req.user) {
         return res.redirect('/');
@@ -52,62 +57,70 @@ app.get('/dashboard', authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Invite page (halaman khusus invite bot)
+// Invite page
 app.get('/invite', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'invite.html'));
 });
 
-// ============ DISCORD OAUTH2 ROUTES ============
+// ============ DISCORD OAUTH2 ============
 
-// Redirect ke Discord login
+// Step 1: Redirect ke Discord login
 app.get('/auth/discord', (req, res) => {
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20email`;
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds%20email`;
+    console.log('🔐 Redirecting to:', authUrl);
     res.redirect(authUrl);
 });
 
-// Callback setelah login Discord
+// Step 2: Callback setelah user login
 app.get('/auth/discord/callback', async (req, res) => {
     const { code } = req.query;
+    
     if (!code) {
+        console.log('❌ No code received');
         return res.redirect('/?error=no_code');
     }
     
+    console.log('📩 Code received:', code.substring(0, 20) + '...');
+    
     try {
-        // Exchange code untuk access token
-        const tokenResponse = await axios.post(`${DISCORD_API}/oauth2/token`, 
+        // Tukar code dengan access token
+        const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', 
             new URLSearchParams({
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET,
+                client_id: DISCORD_CLIENT_ID,
+                client_secret: DISCORD_CLIENT_SECRET,
                 grant_type: 'authorization_code',
                 code: code,
                 redirect_uri: REDIRECT_URI
             }), {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                }
             }
         );
         
         const { access_token } = tokenResponse.data;
+        console.log('✅ Access token obtained');
         
         // Ambil data user
-        const userResponse = await axios.get(`${DISCORD_API}/users/@me`, {
+        const userResponse = await axios.get('https://discord.com/api/users/@me', {
             headers: { Authorization: `Bearer ${access_token}` }
         });
         
         // Ambil list server user
-        const guildsResponse = await axios.get(`${DISCORD_API}/users/@me/guilds`, {
+        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
             headers: { Authorization: `Bearer ${access_token}` }
         });
         
-        // Cek apakah user adalah owner bot
-        const isOwner = OWNER_IDS.includes(userResponse.data.id);
+        const userData = userResponse.data;
+        const isOwner = OWNER_IDS.includes(userData.id);
         
         // Buat JWT token
         const jwtToken = jwt.sign({
-            id: userResponse.data.id,
-            username: userResponse.data.username,
-            discriminator: userResponse.data.discriminator,
-            avatar: userResponse.data.avatar,
-            email: userResponse.data.email,
+            id: userData.id,
+            username: userData.username,
+            avatar: userData.avatar,
+            email: userData.email,
             guilds: guildsResponse.data,
             isOwner: isOwner
         }, JWT_SECRET, { expiresIn: '7d' });
@@ -115,15 +128,16 @@ app.get('/auth/discord/callback', async (req, res) => {
         // Set cookie
         res.cookie('token', jwtToken, {
             httpOnly: true,
-            secure: true,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
         
+        console.log('✅ Login successful for:', userData.username);
         res.redirect('/dashboard');
         
     } catch (error) {
-        console.error('OAuth Error:', error.response?.data || error.message);
+        console.error('❌ OAuth Error:', error.response?.data || error.message);
         res.redirect('/?error=login_failed');
     }
 });
@@ -136,7 +150,7 @@ app.get('/logout', (req, res) => {
 
 // ============ API ENDPOINTS ============
 
-// Get current user info
+// Get current user
 app.get('/api/user', authenticateToken, (req, res) => {
     if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
@@ -151,7 +165,7 @@ app.get('/api/user', authenticateToken, (req, res) => {
     });
 });
 
-// Get bot statistics
+// Get bot stats
 app.get('/api/bot/stats', (req, res) => {
     res.json({
         uptime: process.uptime(),
@@ -159,12 +173,11 @@ app.get('/api/bot/stats', (req, res) => {
         servers: 247,
         users: 15892,
         commands: 52,
-        status: 'online',
-        version: '2.0.0'
+        status: 'online'
     });
 });
 
-// Get user's servers (guilds)
+// Get user's servers
 app.get('/api/servers', authenticateToken, (req, res) => {
     if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
@@ -172,50 +185,59 @@ app.get('/api/servers', authenticateToken, (req, res) => {
     res.json(req.user.guilds || []);
 });
 
-// Get all available commands
+// Get all commands
 app.get('/api/commands', (req, res) => {
     const commands = [
-        { name: 'help', description: 'Menampilkan semua command', category: 'general' },
+        { name: 'help', description: 'Menu bantuan', category: 'general' },
         { name: 'ping', description: 'Cek ping bot', category: 'general' },
         { name: 'invite', description: 'Invite bot ke server', category: 'general' },
-        { name: 'stats', description: 'Statistik bot', category: 'general' },
-        { name: 'kick', description: 'Kick member dari server', category: 'moderation' },
-        { name: 'ban', description: 'Ban member dari server', category: 'moderation' },
-        { name: 'clear', description: 'Hapus pesan di channel', category: 'moderation' },
-        { name: 'meme', description: 'Random meme dari Reddit', category: 'fun' },
-        { name: 'joke', description: 'Random joke lucu', category: 'fun' },
+        { name: 'kick', description: 'Kick member', category: 'moderation' },
+        { name: 'ban', description: 'Ban member', category: 'moderation' },
+        { name: 'clear', description: 'Hapus pesan', category: 'moderation' },
+        { name: 'meme', description: 'Random meme', category: 'fun' },
+        { name: 'joke', description: 'Random joke', category: 'fun' },
         { name: 'quote', description: 'Quote inspiratif', category: 'fun' },
-        { name: 'avatar', description: 'Lihat avatar user', category: 'fun' },
         { name: 'daily', description: 'Claim daily reward', category: 'economy' },
-        { name: 'balance', description: 'Cek saldo coins', category: 'economy' },
-        { name: 'work', description: 'Kerja dapet duit', category: 'economy' },
-        { name: 'leaderboard', description: 'Top 10 richest users', category: 'economy' },
-        { name: 'ai', description: 'Chat dengan AI', category: 'ai' }
+        { name: 'balance', description: 'Cek saldo', category: 'economy' },
+        { name: 'work', description: 'Kerja dapet duit', category: 'economy' }
     ];
     res.json(commands);
 });
 
-// Get bot invite URL
+// Get invite URL
 app.get('/api/invite', (req, res) => {
-    const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&permissions=8&scope=bot%20applications.commands`;
+    const clientId = DISCORD_CLIENT_ID;
+    if (!clientId || clientId === 'undefined') {
+        return res.status(500).json({ error: 'CLIENT_ID not configured' });
+    }
+    const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
     res.json({ url: inviteUrl });
 });
 
-// Check if user is owner
-app.get('/api/isOwner', authenticateToken, (req, res) => {
-    if (!req.user) {
-        return res.status(401).json({ error: 'Not authenticated' });
-    }
-    res.json({ isOwner: req.user.isOwner });
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
+    res.json({
+        clientId: DISCORD_CLIENT_ID ? DISCORD_CLIENT_ID.substring(0, 10) + '...' : 'MISSING',
+        clientIdFull: DISCORD_CLIENT_ID,
+        redirectUri: REDIRECT_URI,
+        hasCookie: !!req.cookies.token,
+        nodeEnv: process.env.NODE_ENV || 'development'
+    });
 });
 
-// ============ START SERVER (untuk local) ============
+// ============ START SERVER ============
 if (require.main === module) {
-    const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-        console.log(`✅ Server running on http://localhost:${PORT}`);
+        console.log(`
+╔══════════════════════════════════════════════════════╗
+║   💙 LIFX AI — DISCORD BOT DASHBOARD 💙              ║
+║   🚀 Server running on http://localhost:${PORT}        ║
+║   🔐 Client ID: ${DISCORD_CLIENT_ID ? '✅ ADA' : '❌ MISSING'}
+║   🔑 Client Secret: ${DISCORD_CLIENT_SECRET ? '✅ ADA' : '❌ MISSING'}
+║   🌐 Redirect URI: ${REDIRECT_URI}
+╚══════════════════════════════════════════════════════╝
+        `);
     });
 }
 
-// Export untuk Vercel
 module.exports = app;
