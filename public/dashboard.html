@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — LifxAi Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo" style="justify-content: center;">💙 LIFX AI</div>
+            <ul class="sidebar-menu">
+                <li><a href="#" onclick="showSection('dashboard')" class="active" id="nav-dashboard">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showSection('servers')" id="nav-servers">🖥️ My Servers</a></li>
+                <li><a href="#" onclick="showSection('commands')" id="nav-commands">⚡ Commands</a></li>
+                <li><a href="#" onclick="showSection('settings')" id="nav-settings">⚙️ Settings</a></li>
+                <li><hr></li>
+                <li><a href="/logout">🚪 Logout</a></li>
+            </ul>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+                <h1>Welcome back, <span id="username" style="color: var(--primary);">User</span> 👋</h1>
+                <div class="user-avatar" id="userAvatar">A</div>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div id="dashboardSection">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value" id="statUptime">0</div><div class="stat-label">Uptime (hours)</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statPing">0</div><div class="stat-label">Ping (ms)</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statServers">0</div><div class="stat-label">Servers</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statUsers">0</div><div class="stat-label">Users</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statCommands">0</div><div class="stat-label">Commands</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statStatus">●</div><div class="stat-label">Bot Status</div></div>
+                </div>
+            </div>
+            
+            <!-- Servers Section -->
+            <div id="serversSection" style="display: none;">
+                <h2 style="margin-bottom: 24px;">🖥️ Your Servers</h2>
+                <div class="servers-grid" id="serversGrid"></div>
+            </div>
+            
+            <!-- Commands Section -->
+            <div id="commandsSection" style="display: none;">
+                <h2 style="margin-bottom: 24px;">⚡ All Commands</h2>
+                <div class="commands-grid" id="commandsGrid"></div>
+            </div>
+            
+            <!-- Settings Section -->
+            <div id="settingsSection" style="display: none;">
+                <h2 style="margin-bottom: 24px;">⚙️ Settings</h2>
+                <div style="background: white; border-radius: 24px; padding: 32px; border: 1px solid #E5E7EB;">
+                    <p>🌙 Theme: Light Mode</p>
+                    <p>🔔 Notifications: Enabled</p>
+                    <p>🔄 Auto-refresh: Every 10 seconds</p>
+                    <p>💙 Bot Owner: ANGGA GANTENG</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
