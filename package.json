@@ -1,0 +1,26 @@
+{
+  "name": "lifxai-bot",
+  "version": "2.0.0",
+  "description": "LifxAi Discord Bot - Public Edition with Web Dashboard",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "bot": "node bot.js",
+    "dev": "nodemon index.js",
+    "vercel-build": "echo Build completed"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cookie-parser": "^1.4.6",
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "discord.js": "^14.14.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["discord-bot", "dashboard", "lifxai"],
+  "author": "LifxAi",
+  "license": "MIT"
+}
