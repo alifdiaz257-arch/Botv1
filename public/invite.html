@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invite Bot — LifxAi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="background-gradient"></div>
+    
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">💙 LIFX AI</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/invite">Invite</a>
+                <a href="/auth/discord" class="btn btn-primary">Login</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="invite-container">
+        <div class="invite-card">
+            <div class="invite-icon">🤖💙</div>
+            <h1 style="margin-bottom: 16px;">Invite <span style="color: var(--primary);">LifxAi Bot</span></h1>
+            <p style="color: var(--gray-600); margin-bottom: 32px;">Tambahkan bot ke server Discord lo dan nikmati fitur lengkapnya!</p>
+            
+            <div id="inviteButton" class="invite-btn-large" style="cursor: pointer;">
+                ➕ Add to Discord
+            </div>
+            
+            <div style="margin-top: 32px;">
+                <p style="font-size: 14px; color: var(--gray-600);">Atau copy link ini:</p>
+                <code id="inviteLink" style="display: inline-block; margin-top: 8px; padding: 8px 16px; background: var(--gray-100); border-radius: 8px; word-break: break-all;"></code>
+                <button onclick="copyLink()" class="btn btn-outline" style="margin-left: 12px;">Copy</button>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <div class="container">
+            <p>💙 LIFX AI — Discord Bot Public Edition 💙</p>
+            <p>Bot by: <strong>ANGGA GANTENG</strong></p>
+        </div>
+    </footer>
+    
+    <script>
+        let inviteUrl = '';
+        
+        async function loadInviteUrl() {
+            try {
+                const res = await fetch('/api/invite');
+                const data = await res.json();
+                inviteUrl = data.url;
+                document.getElementById('inviteLink').innerText = inviteUrl;
+                document.getElementById('inviteButton').onclick = () => window.open(inviteUrl, '_blank');
+            } catch(e) {
+                console.error(e);
+            }
+        }
+        
+        function copyLink() {
+            navigator.clipboard.writeText(inviteUrl);
+            alert('Link invite berhasil disalin!');
+        }
+        
+        loadInviteUrl();
+    </script>
+</body>
+</html>
