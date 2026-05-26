@@ -3,33 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — LifxAi Bot</title>
+    <title>Dashboard — LifxAi</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo" style="justify-content: center;">💙 LIFX AI</div>
             <ul class="sidebar-menu">
                 <li><a href="#" onclick="showSection('dashboard')" class="active" id="nav-dashboard">📊 Dashboard</a></li>
                 <li><a href="#" onclick="showSection('servers')" id="nav-servers">🖥️ My Servers</a></li>
                 <li><a href="#" onclick="showSection('commands')" id="nav-commands">⚡ Commands</a></li>
-                <li><a href="#" onclick="showSection('settings')" id="nav-settings">⚙️ Settings</a></li>
                 <li><hr></li>
                 <li><a href="/logout">🚪 Logout</a></li>
             </ul>
         </aside>
         
-        <!-- Main Content -->
         <main class="main-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-                <h1>Welcome back, <span id="username" style="color: var(--primary);">User</span> 👋</h1>
+                <h1>Welcome back, <span id="username" style="color: #3B82F6;">User</span> 👋</h1>
                 <div class="user-avatar" id="userAvatar">A</div>
             </div>
             
-            <!-- Dashboard Section -->
             <div id="dashboardSection">
                 <div class="stats-grid">
                     <div class="stat-card"><div class="stat-value" id="statUptime">0</div><div class="stat-label">Uptime (hours)</div></div>
@@ -41,31 +37,107 @@
                 </div>
             </div>
             
-            <!-- Servers Section -->
             <div id="serversSection" style="display: none;">
-                <h2 style="margin-bottom: 24px;">🖥️ Your Servers</h2>
+                <h2>🖥️ Your Servers</h2>
                 <div class="servers-grid" id="serversGrid"></div>
             </div>
             
-            <!-- Commands Section -->
             <div id="commandsSection" style="display: none;">
-                <h2 style="margin-bottom: 24px;">⚡ All Commands</h2>
+                <h2>⚡ All Commands</h2>
                 <div class="commands-grid" id="commandsGrid"></div>
-            </div>
-            
-            <!-- Settings Section -->
-            <div id="settingsSection" style="display: none;">
-                <h2 style="margin-bottom: 24px;">⚙️ Settings</h2>
-                <div style="background: white; border-radius: 24px; padding: 32px; border: 1px solid #E5E7EB;">
-                    <p>🌙 Theme: Light Mode</p>
-                    <p>🔔 Notifications: Enabled</p>
-                    <p>🔄 Auto-refresh: Every 10 seconds</p>
-                    <p>💙 Bot Owner: ANGGA GANTENG</p>
-                </div>
             </div>
         </main>
     </div>
     
-    <script src="/js/dashboard.js"></script>
+    <script>
+        async function fetchUser() {
+            try {
+                const res = await fetch('/api/user');
+                if (res.status === 401) { window.location.href = '/'; return; }
+                const data = await res.json();
+                document.getElementById('username').innerText = data.username;
+                document.getElementById('userAvatar').innerText = data.username?.charAt(0).toUpperCase() || 'U';
+            } catch(e) { window.location.href = '/'; }
+        }
+        
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/bot/stats');
+                const data = await res.json();
+                document.getElementById('statUptime').innerText = Math.floor((data.uptime || 0) / 3600);
+                document.getElementById('statPing').innerText = data.ping || 0;
+                document.getElementById('statServers').innerText = data.servers || 0;
+                document.getElementById('statUsers').innerText = data.users || 0;
+                document.getElementById('statCommands').innerText = data.commands || 0;
+                document.getElementById('statStatus').innerHTML = data.status === 'online' ? '🟢 Online' : '🔴 Offline';
+            } catch(e) { console.error(e); }
+        }
+        
+        async function fetchServers() {
+            try {
+                const res = await fetch('/api/servers');
+                const servers = await res.json();
+                const grid = document.getElementById('serversGrid');
+                if (grid) {
+                    grid.innerHTML = '';
+                    if (!servers.length) {
+                        grid.innerHTML = '<p>Belum ada server. Invite bot dulu!</p>';
+                        return;
+                    }
+                    servers.forEach(server => {
+                        const card = document.createElement('div');
+                        card.className = 'server-card';
+                        card.innerHTML = `<div class="user-avatar" style="width:50px;height:50px;">${(server.name || 'S').charAt(0)}</div>
+                                         <div><strong>${server.name}</strong><br><span style="font-size:12px;">ID: ${server.id}</span></div>`;
+                        grid.appendChild(card);
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function fetchCommands() {
+            try {
+                const res = await fetch('/api/commands');
+                const commands = await res.json();
+                const grid = document.getElementById('commandsGrid');
+                if (grid) {
+                    grid.innerHTML = '';
+                    commands.forEach(cmd => {
+                        const badge = document.createElement('div');
+                        badge.className = 'command-badge';
+                        badge.innerText = `/${cmd.name}`;
+                        grid.appendChild(badge);
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        function showSection(section) {
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('serversSection').style.display = 'none';
+            document.getElementById('commandsSection').style.display = 'none';
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            
+            if (section === 'dashboard') {
+                document.getElementById('dashboardSection').style.display = 'block';
+                document.getElementById('nav-dashboard').classList.add('active');
+                fetchStats();
+            }
+            if (section === 'servers') {
+                document.getElementById('serversSection').style.display = 'block';
+                document.getElementById('nav-servers').classList.add('active');
+                fetchServers();
+            }
+            if (section === 'commands') {
+                document.getElementById('commandsSection').style.display = 'block';
+                document.getElementById('nav-commands').classList.add('active');
+                fetchCommands();
+            }
+        }
+        
+        fetchUser();
+        fetchStats();
+        setInterval(fetchStats, 10000);
+    </script>
 </body>
 </html>
